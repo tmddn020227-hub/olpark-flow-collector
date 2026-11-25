@@ -1,0 +1,33 @@
+name: OlPark Flow 24x7 Live Collector
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Collect live OlPark parking, road speeds, crowd & weather
+        env:
+          SEOUL_API_KEY: ${{ secrets.SEOUL_API_KEY }}
+        run: node scripts/collect_once.js
+
+      - name: Commit & push collected snapshot
+        run: |
+          git config user.name "olpark-collector[bot]"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/raw/cloud_live_log.jsonl
+          git diff --cached --quiet || (git commit -m "chore: collect live snapshot ($(TZ=Asia/Seoul date +'%Y-%m-%d %H:%M KST'))" && git pull --rebase && git push)
